@@ -1,20 +1,27 @@
-using UnityEngine;
+п»їusing UnityEngine;
 using UnityEngine.Tilemaps;
 
 public class MapGenerator : MonoBehaviour
 {
-    public int width = 100; // Ширина карты
-    public int height = 100; // Высота карты
-    public float scale = 20f; // Масштаб шума Перлина
+    public int width = 100;
+    public int height = 100;
+    public float noiseScale = 10f;
+    public float riverNoiseScale = 15f; // Р Р°Р·РјРµСЂ РІРѕР»РЅ РґР»СЏ СЂРµРє
+    public float lakeThreshold = 0.7f; // РџРѕСЂРѕРі РґР»СЏ РѕР·С‘СЂ
 
-    public Tilemap tilemap; // Tilemap для генерации
-    public TileBase groundTile; // Тайл земли
-    public TileBase waterTile; // Тайл воды
-    public float waterThreshold = 0.4f; // Порог для воды
+    public Tilemap tilemap; // РљР°СЂС‚Р° Р·РµРјР»Рё
+    public Tilemap objectTilemap; // РћС‚РґРµР»СЊРЅС‹Р№ Tilemap РґР»СЏ РґРµСЂРµРІСЊРµРІ, РєСѓСЃС‚РѕРІ Рё РєР°РјРЅРµР№
+    public TileBase grassTile, sandTile, jungleTile, snowTile;
+    public TileBase waterTile; // Р’РѕРґР° (СЂРµРєРё Рё РѕР·С‘СЂР°)
+
+    public GameObject[] trees;
+    public GameObject[] bushes;
+    public GameObject[] rocks;
 
     void Start()
     {
         GenerateMap();
+        GenerateObjects();
     }
 
     void GenerateMap()
@@ -23,10 +30,76 @@ public class MapGenerator : MonoBehaviour
         {
             for (int y = 0; y < height; y++)
             {
-                float perlinValue = Mathf.PerlinNoise(x / scale, y / scale); // Генерация значения шума
-                TileBase tile = perlinValue > waterThreshold ? groundTile : waterTile; // Выбор тайла
+                float noiseValue = Mathf.PerlinNoise(x / noiseScale, y / noiseScale);
+                float riverNoise = Mathf.PerlinNoise(x / riverNoiseScale, y / riverNoiseScale);
 
-                tilemap.SetTile(new Vector3Int(x, y, 0), tile); // Установка тайла на карте
+                TileBase selectedTile;
+
+                // Р“РµРЅРµСЂР°С†РёСЏ СЂРµРє Рё РѕР·С‘СЂ
+                if (riverNoise > lakeThreshold)
+                {
+                    selectedTile = waterTile; // РћР·РµСЂРѕ
+                }
+                else if (riverNoise > 0.5f && Random.value < 0.02f)
+                {
+                    selectedTile = waterTile; // Р РµРєР°
+                }
+                else
+                {
+                    selectedTile = GetTileForBiome(noiseValue);
+                }
+
+                tilemap.SetTile(new Vector3Int(x, y, 0), selectedTile);
+            }
+        }
+    }
+
+    TileBase GetTileForBiome(float noiseValue)
+    {
+        if (noiseValue < 0.25f) return snowTile;
+        else if (noiseValue < 0.5f) return jungleTile;
+        else if (noiseValue < 0.75f) return sandTile;
+        else return grassTile;
+    }
+
+    void GenerateObjects()
+    {
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                TileBase currentTile = tilemap.GetTile(new Vector3Int(x, y, 0));
+
+                if (currentTile == waterTile) continue; // РќРёРєР°РєРёРµ СЂРµСЃСѓСЂСЃС‹ РЅРµ СЃРїР°РІРЅРёРј РІ РІРѕРґРµ
+
+                if (currentTile == grassTile) // Р”РµСЂРµРІСЊСЏ РЅР° С‚СЂР°РІРµ
+                {
+                    if (Random.value < 0.1f)
+                    {
+                        Instantiate(trees[Random.Range(0, trees.Length)], new Vector3(x, y, -0.1f), Quaternion.identity);
+                    }
+                }
+                else if (currentTile == jungleTile) // РљСѓСЃС‚С‹ РІ РґР¶СѓРЅРіР»СЏС…
+                {
+                    if (Random.value < 0.15f)
+                    {
+                        Instantiate(bushes[Random.Range(0, bushes.Length)], new Vector3(x, y, -0.1f), Quaternion.identity);
+                    }
+                }
+                else if (currentTile == sandTile) // РљР°РјРЅРё РІ РїСѓСЃС‚С‹РЅРµ
+                {
+                    if (Random.value < 0.05f)
+                    {
+                        Instantiate(rocks[Random.Range(0, rocks.Length)], new Vector3(x, y, -0.1f), Quaternion.identity);
+                    }
+                }
+                else if (currentTile == snowTile) // РљР°РјРЅРё РІ СЃРЅРµРіСѓ
+                {
+                    if (Random.value < 0.08f)
+                    {
+                        Instantiate(rocks[Random.Range(0, rocks.Length)], new Vector3(x, y, -0.1f), Quaternion.identity);
+                    }
+                }
             }
         }
     }
